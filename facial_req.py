@@ -1,14 +1,19 @@
-#! /usr/bin/python
+#! /usr/bin/python3
 
 # import the necessary packages
+
 from imutils.video import VideoStream
 from imutils.video import FPS
 import face_recognition
 import imutils
 import pickle
 import time
+from playsound import playsound
 import cv2
-
+import requests
+import server  as servo
+import email
+import mail as message
 #Initialize 'currentname' to trigger only when a new person is identified.
 currentname = "unknown"
 #Determine faces from encodings.pickle file model created from train_model.py
@@ -19,22 +24,25 @@ cascade = "haarcascade_frontalface_default.xml"
 # load the known faces and embeddings along with OpenCV's Haar
 # cascade for face detection
 print("[INFO] loading encodings + face detector...")
-data = pickle.loads(open(encodingsP, "rb").read())
+data = pickle.loads(open(encodingsP, "rb").read(), encoding="iso-8859-1")
 detector = cv2.CascadeClassifier(cascade)
 
 # initialize the video stream and allow the camera sensor to warm up
 print("[INFO] starting video stream...")
-vs = VideoStream(src=0).start()
-#vs = VideoStream(usePiCamera=True).start()
+#vs = VideoStream(src=0).start()
+vs = VideoStream(usePiCamera=True).start()
 time.sleep(2.0)
 
 # start the FPS counter
 fps = FPS().start()
 
+playsound("hello.wav")
 # loop over frames from the video file stream
 while True:
 	# grab the frame from the threaded video stream and resize it
 	# to 500px (to speedup processing)
+	
+
 	frame = vs.read()
 	frame = imutils.resize(frame, width=500)
 	
@@ -44,7 +52,7 @@ while True:
 	rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
 	# detect faces in the grayscale frame
-	rects = detector.detectMultiScale(gray, scaleFactor=1.1, 
+	rects = detector.detectMultiScale(gray, scaleFactor=1.1,
 		minNeighbors=5, minSize=(30, 30),
 		flags=cv2.CASCADE_SCALE_IMAGE)
 
@@ -56,15 +64,26 @@ while True:
 	# compute the facial embeddings for each face bounding box
 	encodings = face_recognition.face_encodings(rgb, boxes)
 	names = []
+	#servo.turnRight()
 
 	# loop over the facial embeddings
 	for encoding in encodings:
+		playsound("anythere.wav")
+		servo.turnRight()
+
 		# attempt to match each face in the input image to our known
 		# encodings
-		matches = face_recognition.compare_faces(data["encodings"],
-			encoding)
+		matches = face_recognition.compare_faces(data["encodings"], encoding)
 		name = "Unknown" #if face is not recognized, then print Unknown
-
+		if(name == "Unknown"):
+			playsound("pew.wav")
+			playsound("pew.wav")
+			playsound("pew.wav")
+			servo.shoot()
+			playsound("lost.wav")
+			request = message.send_message()
+			print ('Status Code: '+format(request.status_code)) #200 status code means email sent successfully
+	
 		# check to see if we have found a match
 		if True in matches:
 			# find the indexes of all matched faces then initialize a
@@ -88,7 +107,9 @@ while True:
 			if currentname != name:
 				currentname = name
 				print(currentname)
-		
+			
+
+		servo.turnLeft(45)				
 		# update the list of names
 		names.append(name)
 
